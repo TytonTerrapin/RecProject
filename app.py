@@ -14,6 +14,37 @@ TMDB_API_KEY = os.getenv("TMDB_API_KEY")
 # URL of running recommender service; defaults to localhost if not set
 RECOMMENDER_API = os.getenv("RECOMMENDER_API", "http://127.0.0.1:8000")
 
+# when deploying to Streamlit sharing the backend may not be running separately.
+# if the target is localhost and the FastAPI module is available we can start it
+# in a background thread on first import.
+if RECOMMENDER_API.startswith("http://127.0.0.1") or RECOMMENDER_API.startswith("http://localhost"):
+    # try to import uvicorn and api; if successful and not already running, launch
+    try:
+        import threading
+        import time
+        import socket
+        import uvicorn
+        from api import app as _fastapi_app
+
+        def _start_backend():
+            # wait until port free
+            sock = socket.socket()
+            while True:
+                try:
+                    sock.connect(("127.0.0.1", 8000))
+                    sock.close()
+                    # port already in use
+                    return
+                except OSError:
+                    break
+            uvicorn.run(_fastapi_app, host="127.0.0.1", port=8000)
+
+        threading.Thread(target=_start_backend, daemon=True).start()
+        # give backend a moment to spin up
+        time.sleep(1)
+    except Exception:
+        pass
+
 TMDB_BASE = "https://api.themoviedb.org/3"
 TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500"
 
