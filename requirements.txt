@@ -1,0 +1,10 @@
+streamlit
+requests
+python-dotenv
+fastapi
+uvicorn
+numpy
+scipy
+scikit-learn
+pandas
+tqdm

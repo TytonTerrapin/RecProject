@@ -58,6 +58,30 @@ streamlit run app.py
 
 The app will attempt to talk to the recommender API at `RECOMMENDER_API` (defaults to `http://127.0.0.1:8000`). If the backend isn't running the UI will still load but recommendations/autocomplete will be disabled.
 
+### Deploying on Streamlit Community Cloud
+
+To deploy the application to Streamlit's hosting (formerly Streamlit Sharing):
+
+1. **Push your repository to GitHub.**
+2. **Include a `requirements.txt`** (already provided in this repo).
+3. **Set secrets/environment variables** via the Streamlit Cloud dashboard:
+   - `TMDB_API_KEY`: your TMDB key.
+   - `RECOMMENDER_API`: if you host the FastAPI backend separately, set its URL; otherwise leave blank and run backend as part of the same app using `multiprocessing` or similar.
+
+4. **Optional:** if you need the backend logic to run on the same server, create a `Procfile` or modify `app.py` to start FastAPI in a thread; ensure model files are accessible.
+
+5. Click "New app" in the Cloud, select your GitHub repo and the branch, and provide the path to `app.py` as the main file.
+
+Because the recommender model files (`models/`) are not part of the repository, you'll need a way to either generate them on startup or store them in Git LFS / external storage.
+
+> **Note:** Streamlit Cloud has limitations on long-running background processes; it's often simpler to host the FastAPI backend elsewhere (e.g., Heroku, Fly, Vercel) and point `RECOMMENDER_API` at it.
+
+Deployment troubleshooting:
+
+- Ensure `requirements.txt` lists all dependencies.
+- Use the "Secrets" tab to configure TMDB_API_KEY.
+- Check logs via the Cloud UI if the app fails to start.
+
 ## Notes
 
 - The Streamlit UI uses a local cache for TMDB search results to reduce API calls.
