@@ -1,5 +1,4 @@
 import numpy as np
-import joblib
 from scipy import sparse
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -13,16 +12,9 @@ class HybridRecommender:
         k_desc=50,
         k_meta=50
     ):
-        """
-        alpha: weight for SBERT similarity
-        beta: weight for TF-IDF similarity
-        k_desc: number of semantic candidates
-        k_meta: number of metadata candidates
-        """
 
         print("Loading models...")
 
-        # load numpy arrays; some may contain object dtypes so allow_pickle
         self.sbert_embeddings = np.load(f"{model_dir}/sbert_embeddings.npy", allow_pickle=True)
         self.tfidf_matrix = sparse.load_npz(f"{model_dir}/tfidf_matrix.npz")
         self.movie_ids = np.load(f"{model_dir}/movie_ids.npy", allow_pickle=True)
@@ -50,7 +42,7 @@ class HybridRecommender:
 
     def _recommend_by_index(self, idx, top_n=10):
 
-        # 1️⃣ Compute similarities
+        # Compute similarities
         desc_sim = cosine_similarity(
             self.sbert_embeddings[idx].reshape(1, -1),
             self.sbert_embeddings
@@ -65,31 +57,41 @@ class HybridRecommender:
         desc_sim[idx] = -1
         meta_sim[idx] = -1
 
-        # 2️⃣ Get Top-K from each
-        top_desc_idx = np.argsort(desc_sim)[-self.k_desc:]
-        top_meta_idx = np.argsort(meta_sim)[-self.k_meta:]
+        # Faster top-k retrieval
+        top_desc_idx = np.argpartition(desc_sim, -self.k_desc)[-self.k_desc:]
+        top_meta_idx = np.argpartition(meta_sim, -self.k_meta)[-self.k_meta:]
 
-        # 3️⃣ Union of candidates
-        candidates = set(top_desc_idx).union(set(top_meta_idx))
+        # Candidate union using numpy
+        candidates = np.unique(
+            np.concatenate([top_desc_idx, top_meta_idx])
+        )
 
-        # 4️⃣ Re-rank union
-        results = []
-        for i in candidates:
-            score = self.alpha * desc_sim[i] + self.beta * meta_sim[i]
-            results.append((i, score))
+        # Normalize similarity scores
+        desc_norm = (desc_sim - desc_sim.min()) / (
+            desc_sim.max() - desc_sim.min() + 1e-8
+        )
 
-        results = sorted(results, key=lambda x: x[1], reverse=True)
+        meta_norm = (meta_sim - meta_sim.min()) / (
+            meta_sim.max() - meta_sim.min() + 1e-8
+        )
 
-        # 5️⃣ Return Top-N
-        final = results[:top_n]
+        # Vectorized hybrid scoring
+        scores = (
+            self.alpha * desc_norm[candidates] +
+            self.beta * meta_norm[candidates]
+        )
+
+        # Rank candidates
+        top_indices = np.argsort(scores)[-top_n:][::-1]
+        final_candidates = candidates[top_indices]
 
         return [
             {
                 "movie_id": int(self.movie_ids[i]),
                 "title": self.titles[i],
-                "score": float(score)
+                "score": float(scores[top_indices[j]])
             }
-            for i, score in final
+            for j, i in enumerate(final_candidates)
         ]
 
     # ---------------------------------------------------------
