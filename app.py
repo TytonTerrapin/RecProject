@@ -12,7 +12,8 @@ import sys
 # Configuration
 # ============================================================
 
-API_BASE_URL = "http://127.0.0.1:8000"
+# Load API URL from Streamlit secrets
+API_BASE_URL = st.secrets.get("api_base_url", "http://127.0.0.1:8000")
 API_PROCESS = None
 
 # Set page config
@@ -44,28 +45,43 @@ def start_api_server():
     try:
         # Determine the python executable path
         python_exe = sys.executable
+        project_dir = os.path.dirname(os.path.abspath(__file__))
         
-        # Start the API server as a subprocess
-        subprocess.Popen(
-            [python_exe, "api.py"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            cwd=os.path.dirname(os.path.abspath(__file__))
-        )
+        # Start the API server as a subprocess with output to files for debugging
+        with open(os.path.join(project_dir, "api_server.log"), "w") as log_file:
+            with open(os.path.join(project_dir, "api_server_error.log"), "w") as err_file:
+                process = subprocess.Popen(
+                    [python_exe, "-m", "uvicorn", "api:app", "--host", "127.0.0.1", "--port", "8000"],
+                    stdout=log_file,
+                    stderr=err_file,
+                    cwd=project_dir,
+                    creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == "win32" else 0
+                )
         
         # Wait for the server to start
-        max_retries = 30
+        max_retries = 40
         for i in range(max_retries):
             if is_api_running():
                 st.success("✅ API server started successfully")
                 return True
             time.sleep(0.5)
         
-        st.error("❌ Failed to start API server")
+        # If we get here, server didn't start in time
+        with st.expander("❌ Failed to start API server - Click to see logs"):
+            try:
+                log_path = os.path.join(project_dir, "api_server_error.log")
+                if os.path.exists(log_path):
+                    with open(log_path, "r") as f:
+                        error_content = f.read()
+                    st.code(error_content, language="")
+            except:
+                st.write("Unable to read error logs")
+                
         return False
     except Exception as e:
-        st.error(f"❌ Error starting API server: {e}")
-        return False
+        st.error(f"❌ Error starting API server: {str(e)}")
+        import traceback
+        st.code(traceback.format_exc(), language="python")
 
 
 # Initialize session state for API startup
@@ -78,7 +94,7 @@ if not st.session_state.api_started:
         if start_api_server():
             st.session_state.api_started = True
         else:
-            st.warning("⚠️ Make sure the API can be started")
+            st.warning("⚠️ Check the error logs above or restart the app")
 
 # Custom CSS
 st.markdown("""
