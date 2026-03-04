@@ -3,12 +3,17 @@ import requests
 import pandas as pd
 from datetime import datetime
 import time
+import subprocess
+import socket
+import os
+import sys
 
 # ============================================================
 # Configuration
 # ============================================================
 
 API_BASE_URL = "http://127.0.0.1:8000"
+API_PROCESS = None
 
 # Set page config
 st.set_page_config(
@@ -17,6 +22,63 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# ============================================================
+# API Server Management
+# ============================================================
+
+def is_api_running():
+    """Check if the API server is running on port 8000."""
+    try:
+        response = requests.get(f"{API_BASE_URL}/", timeout=2)
+        return response.status_code == 200
+    except Exception:
+        return False
+
+
+def start_api_server():
+    """Start the API server in a background subprocess."""
+    if is_api_running():
+        return True
+    
+    try:
+        # Determine the python executable path
+        python_exe = sys.executable
+        
+        # Start the API server as a subprocess
+        subprocess.Popen(
+            [python_exe, "api.py"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            cwd=os.path.dirname(os.path.abspath(__file__))
+        )
+        
+        # Wait for the server to start
+        max_retries = 30
+        for i in range(max_retries):
+            if is_api_running():
+                st.success("✅ API server started successfully")
+                return True
+            time.sleep(0.5)
+        
+        st.error("❌ Failed to start API server")
+        return False
+    except Exception as e:
+        st.error(f"❌ Error starting API server: {e}")
+        return False
+
+
+# Initialize session state for API startup
+if "api_started" not in st.session_state:
+    st.session_state.api_started = False
+
+# Start API server on app initialization
+if not st.session_state.api_started:
+    with st.spinner("🚀 Starting API server..."):
+        if start_api_server():
+            st.session_state.api_started = True
+        else:
+            st.warning("⚠️ Make sure the API can be started")
 
 # Custom CSS
 st.markdown("""
