@@ -94,6 +94,12 @@ if "selected_movie_id" not in st.session_state:
 if "previous_search" not in st.session_state:
     st.session_state.previous_search = None
 
+if "search_results" not in st.session_state:
+    st.session_state.search_results = None
+
+if "current_search_query" not in st.session_state:
+    st.session_state.current_search_query = ""
+
 # Start API server on app initialization
 if not st.session_state.api_started:
     with st.spinner("🚀 Starting API server..."):
@@ -300,10 +306,11 @@ def display_movie_details(movie_id):
         return
     
     # Back button
-    if st.button("← Back to Gallery"):
-        st.session_state.selected_movie_id = None
-        st.session_state.previous_search = False
-        st.rerun()
+    left_col, _, _ = st.columns([1, 2, 2])
+    with left_col:
+        if st.button("← Back", key="back_button"):
+            st.session_state.selected_movie_id = None
+            st.rerun()
     
     st.divider()
     
@@ -422,22 +429,39 @@ with col1:
     search_query = st.text_input(
         "🔍 Search for a movie",
         placeholder="Enter movie title...",
-        label_visibility="collapsed"
+        label_visibility="collapsed",
+        value=st.session_state.current_search_query
     )
 with col2:
     search_btn = st.button("Search")
 
-# Search Results or Popular Movies
-if search_query and search_btn:
-    st.session_state.previous_search = search_query
-    st.subheader(f"Search Results for '{search_query}'")
-    movies = search_movies(search_query)
+# Handle search button click
+if search_btn and search_query:
+    st.session_state.current_search_query = search_query
+    st.session_state.search_results = search_movies(search_query)
+
+# Display Search Results or Popular Movies
+if st.session_state.search_results is not None:
+    # Display search results
+    st.subheader(f"Search Results for '{st.session_state.current_search_query}'")
     
-    if not movies:
+    if not st.session_state.search_results:
         st.info("No movies found matching your search. Try another title!")
+        if st.button("← Clear Search"):
+            st.session_state.search_results = None
+            st.session_state.current_search_query = ""
+            st.rerun()
     else:
-        st.write(f"Found {len(movies)} movie(s)")
-        display_movies_gallery(movies, key_prefix="search")
+        st.write(f"Found {len(st.session_state.search_results)} movie(s)")
+        
+        col_clear = st.columns([4, 1])[1]
+        with col_clear:
+            if st.button("← Clear Search"):
+                st.session_state.search_results = None
+                st.session_state.current_search_query = ""
+                st.rerun()
+        
+        display_movies_gallery(st.session_state.search_results, key_prefix="search")
 else:
     # Display Popular Movies
     st.subheader("🎯 Popular Movies")
