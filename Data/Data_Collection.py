@@ -15,7 +15,7 @@ if API_KEY is None:
     raise ValueError("TMDB_API_KEY not found in environment variables")
 
 BASE_URL = "https://api.themoviedb.org/3"
-TOTAL_PAGES = 50  # 50 pages × 20 movies = 1000 movies
+TOTAL_PAGES = 1000  # 50 pages × 20 movies = 1000 movies
 
 
 def create_session_with_retries():
