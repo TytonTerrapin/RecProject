@@ -69,7 +69,16 @@ class HybridRecommender:
         candidates = np.unique(
             np.concatenate([top_desc_idx, top_meta_idx])
         )
+        
+        meta_threshold = 0.05
 
+        filtered = [
+            c for c in candidates
+            if meta_sim[c] > meta_threshold
+                   ]
+
+        if len(filtered) > top_n:
+            candidates = np.array(filtered)
         # ---------------------------------------------------------
         # GENRE FILTER
         # ---------------------------------------------------------

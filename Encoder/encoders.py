@@ -27,17 +27,28 @@ df = pd.read_csv(INPUT_FILE)
 print("Loaded dataset:", df.shape)
 
 # ----------------------------
-# 1️⃣ SBERT Embeddings (Overview)
+# 1️⃣ SBERT Embeddings (Title + Tagline + Overview)
 # ----------------------------
 
 print("Loading SBERT model...")
 sbert_model = SentenceTransformer(SBERT_MODEL_NAME)
 
+print("Preparing SBERT input text...")
+
+def build_sbert_text(row):
+
+    title = row["title"] if isinstance(row["title"], str) else ""
+    tagline = row["tagline"] if "tagline" in row and isinstance(row["tagline"], str) else ""
+    overview = row["overview"] if isinstance(row["overview"], str) else ""
+
+    return f"{title}. {tagline}. {overview}"
+
+sbert_texts = df.apply(build_sbert_text, axis=1).tolist()
+
 print("Generating SBERT embeddings...")
-overview_texts = df["overview"].fillna("").tolist()
 
 sbert_embeddings = sbert_model.encode(
-    overview_texts,
+    sbert_texts,
     batch_size=64,
     show_progress_bar=True,
     convert_to_numpy=True
@@ -57,11 +68,12 @@ print("SBERT embeddings saved.")
 print("Preparing metadata text...")
 
 def combine_metadata(row):
+
     genres = " ".join(eval(row["genres"])) if isinstance(row["genres"], str) else ""
     keywords = " ".join(eval(row["keywords"])) if isinstance(row["keywords"], str) else ""
     cast = " ".join(eval(row["cast"])) if isinstance(row["cast"], str) else ""
     director = row["director"] if isinstance(row["director"], str) else ""
-    
+
     return f"{genres} {keywords} {director} {cast}"
 
 meta_texts = df.apply(combine_metadata, axis=1)
@@ -76,10 +88,10 @@ tfidf_vectorizer = TfidfVectorizer(
 
 tfidf_matrix = tfidf_vectorizer.fit_transform(meta_texts)
 
-# L2 normalize (cosine similarity ready)
+# Normalize for cosine similarity
 tfidf_matrix = normalize(tfidf_matrix)
 
-# Save TF-IDF matrix and vectorizer
+# Save TF-IDF artifacts
 sparse.save_npz(os.path.join(OUTPUT_DIR, "tfidf_matrix.npz"), tfidf_matrix)
 joblib.dump(tfidf_vectorizer, os.path.join(OUTPUT_DIR, "tfidf_vectorizer.pkl"))
 
@@ -91,9 +103,9 @@ print("TF-IDF model saved.")
 
 np.save(os.path.join(OUTPUT_DIR, "movie_ids.npy"), df["movie_id"].values)
 np.save(os.path.join(OUTPUT_DIR, "titles.npy"), df["title"].values)
-np.save("models/genres.npy", df["genres"].values)
+np.save(os.path.join(OUTPUT_DIR, "genres.npy"), df["genres"].values)
 
-print("Movie IDs and titles saved.")
+print("Movie IDs, titles, and genres saved.")
 
 # ----------------------------
 # Done
