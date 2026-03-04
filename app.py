@@ -88,6 +88,12 @@ def start_api_server():
 if "api_started" not in st.session_state:
     st.session_state.api_started = False
 
+if "selected_movie_id" not in st.session_state:
+    st.session_state.selected_movie_id = None
+
+if "previous_search" not in st.session_state:
+    st.session_state.previous_search = None
+
 # Start API server on app initialization
 if not st.session_state.api_started:
     with st.spinner("🚀 Starting API server..."):
@@ -148,13 +154,14 @@ def display_movies_gallery(movies, key_prefix="gallery"):
                 display_poster(poster_path, title=title, height=300)
                 st.markdown("</div>", unsafe_allow_html=True)
 
-                # create a button underneath to avoid overlap; no deprecated flag
+                # create a button underneath to avoid overlap
                 if st.button(
                     key=f"movie_{key_prefix}_{movie_id}",
                     label="View Details",
-                    # width controlled by column automatically
                 ):
                     st.session_state.selected_movie_id = movie_id
+                    if key_prefix == "search":
+                        st.session_state.previous_search = True
                     st.rerun()
 
                 # Display title and rating (handle missing vote_average)
@@ -287,12 +294,15 @@ def display_movie_details(movie_id):
     
     if movie is None:
         st.error("Could not load movie details")
+        if st.button("← Back"):
+            st.session_state.selected_movie_id = None
+            st.rerun()
         return
     
     # Back button
     if st.button("← Back to Gallery"):
-        if "selected_movie_id" in st.session_state:
-            del st.session_state.selected_movie_id
+        st.session_state.selected_movie_id = None
+        st.session_state.previous_search = False
         st.rerun()
     
     st.divider()
@@ -401,7 +411,7 @@ st.title("🎬 Movie Recommender")
 st.markdown("Discover movies and get personalized recommendations!")
 
 # if a movie has been selected, skip gallery and show details only
-if "selected_movie_id" in st.session_state:
+if st.session_state.selected_movie_id is not None:
     display_movie_details(st.session_state.selected_movie_id)
     # stop further rendering (gallery/search) – details replace the page
     st.stop()
@@ -419,6 +429,7 @@ with col2:
 
 # Search Results or Popular Movies
 if search_query and search_btn:
+    st.session_state.previous_search = search_query
     st.subheader(f"Search Results for '{search_query}'")
     movies = search_movies(search_query)
     
