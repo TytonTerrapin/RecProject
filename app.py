@@ -3,12 +3,17 @@ import requests
 import pandas as pd
 from datetime import datetime
 import time
+import os
 
 # ============================================================
 # Configuration
 # ============================================================
 
-API_BASE_URL = "http://127.0.0.1:8000"
+# Get API URL from Streamlit secrets (Cloud) or environment variables (local)
+try:
+    API_BASE_URL = st.secrets["API_BASE_URL"]
+except (KeyError, FileNotFoundError):
+    API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000")
 
 # Set page config
 st.set_page_config(

@@ -12,7 +12,12 @@ from functools import lru_cache
 # Load environment variables
 load_dotenv()
 
-TMDB_API_KEY = os.getenv("TMDB_API_KEY")
+# Try Streamlit secrets first (for Streamlit Cloud), then fall back to environment variables
+try:
+    import streamlit as st
+    TMDB_API_KEY = st.secrets["TMDB_API_KEY"]
+except (ImportError, KeyError, FileNotFoundError):
+    TMDB_API_KEY = os.getenv("TMDB_API_KEY")
 if not TMDB_API_KEY:
     raise ValueError("TMDB_API_KEY not found in .env file")
 
