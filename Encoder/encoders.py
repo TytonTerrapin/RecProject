@@ -91,6 +91,7 @@ print("TF-IDF model saved.")
 
 np.save(os.path.join(OUTPUT_DIR, "movie_ids.npy"), df["movie_id"].values)
 np.save(os.path.join(OUTPUT_DIR, "titles.npy"), df["title"].values)
+np.save("models/genres.npy", df["genres"].values)
 
 print("Movie IDs and titles saved.")
 

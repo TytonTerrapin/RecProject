@@ -91,5 +91,7 @@ print("After release year filtering:", df.shape)
 
 df.to_csv(OUTPUT_FILE, index=False)
 
+np.save("models/genres.npy", df["genres"].values)
+
 print("Cleaned dataset saved as:", OUTPUT_FILE)
 print("Final shape:", df.shape)

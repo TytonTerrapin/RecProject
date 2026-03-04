@@ -17,8 +17,12 @@ class HybridRecommender:
 
         self.sbert_embeddings = np.load(f"{model_dir}/sbert_embeddings.npy", allow_pickle=True)
         self.tfidf_matrix = sparse.load_npz(f"{model_dir}/tfidf_matrix.npz")
+
         self.movie_ids = np.load(f"{model_dir}/movie_ids.npy", allow_pickle=True)
         self.titles = np.load(f"{model_dir}/titles.npy", allow_pickle=True)
+
+        # NEW: load genres
+        self.genres = np.load(f"{model_dir}/genres.npy", allow_pickle=True)
 
         self.id_to_index = {
             self.movie_ids[i]: i for i in range(len(self.movie_ids))
@@ -57,16 +61,33 @@ class HybridRecommender:
         desc_sim[idx] = -1
         meta_sim[idx] = -1
 
-        # Faster top-k retrieval
+        # Top candidates from each similarity
         top_desc_idx = np.argpartition(desc_sim, -self.k_desc)[-self.k_desc:]
         top_meta_idx = np.argpartition(meta_sim, -self.k_meta)[-self.k_meta:]
 
-        # Candidate union using numpy
+        # Candidate union
         candidates = np.unique(
             np.concatenate([top_desc_idx, top_meta_idx])
         )
 
+        # ---------------------------------------------------------
+        # GENRE FILTER
+        # ---------------------------------------------------------
+
+        query_genres = set(self.genres[idx])
+
+        filtered_candidates = [
+            c for c in candidates
+            if len(query_genres.intersection(self.genres[c])) > 0
+        ]
+
+        if len(filtered_candidates) > 0:
+            candidates = np.array(filtered_candidates)
+
+        # ---------------------------------------------------------
         # Normalize similarity scores
+        # ---------------------------------------------------------
+
         desc_norm = (desc_sim - desc_sim.min()) / (
             desc_sim.max() - desc_sim.min() + 1e-8
         )
@@ -75,7 +96,7 @@ class HybridRecommender:
             meta_sim.max() - meta_sim.min() + 1e-8
         )
 
-        # Vectorized hybrid scoring
+        # Hybrid scoring
         scores = (
             self.alpha * desc_norm[candidates] +
             self.beta * meta_norm[candidates]
