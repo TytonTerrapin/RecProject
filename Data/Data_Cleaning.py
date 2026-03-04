@@ -54,7 +54,7 @@ df = df[df["overview"].str.len() > 50]
 
 print("After overview filtering:", df.shape)
 
-df = df[df["vote_count"] >= 20]
+df = df[df["vote_count"] >= 15]
 
 print("After vote count filtering:", df.shape)
 
