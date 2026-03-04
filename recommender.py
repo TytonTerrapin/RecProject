@@ -7,8 +7,8 @@ class HybridRecommender:
     def __init__(
         self,
         model_dir="models",
-        alpha=0.7,
-        beta=0.3,
+        alpha=0.6,
+        beta=0.4,
         k_desc=50,
         k_meta=50
     ):
